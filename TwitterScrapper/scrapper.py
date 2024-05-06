@@ -7,8 +7,13 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 import pandas as pd
 
-class Twitter:
-    def __init__(self, handle, silent=True):
+class Scrapper:
+    def __init__(self, handle, credential_path=None, silent=False):
+        if credential_path:
+            self.credential_path = credential_path
+        else:
+            self.credential_path = '../credential.config'
+
         self.password = ''
         self.username = ''
         self.credential()
@@ -21,6 +26,9 @@ class Twitter:
         self.handle = handle
         self.address = f'https://twitter.com/{self.handle}'
 
+        self.datadir = os.getcwd()
+        self.filepath = f'{self.datadir}/{self.handle}.csv'
+
         self.df = pd.DataFrame()
 
     def stop(self):
@@ -28,7 +36,18 @@ class Twitter:
 
     def credential(self):
         "Return username and password from .config"
-        with open('./credential.config', 'r') as f:
+        if not os.path.exists(self.credential_path):
+            message = f"""
+            'Missing credential!
+            expecting file: {os.path.abspath(self.credential_path)}'
+
+            Exemple file content:
+            my_username
+            123456789
+            """
+            raise OSError(message)
+            
+        with open(self.credential_path, 'r') as f:
             credential = f.read().split()
             self.username = credential[0]
             self.password = credential[1]
@@ -58,19 +77,19 @@ class Twitter:
         time.sleep(sec)
 
     def set_df(self, reset=False):
-        path = f'../data/raw/raw_twitter_{handle}.csv'        
+        path = f'../data/raw/raw_twitter_{self.handle}.csv'        
         date = None
 
         if reset or os.path.exists(path) == False:
             df = pd.DataFrame(columns=['raw_date', 'raw_text'])
-            self.address = f'https://twitter.com/{handle}'
+            self.address = f'https://twitter.com/{self.handle}'
         else:
             df = pd.read_csv(path)
             date = pd.to_datetime(df.raw_date, format='%Y-%m-%dT%H:%M:%S.000Z').sort_values(ascending=False).iloc[-1]
             date += timedelta(days=2)
             date = date.strftime('%Y-%m-%d')
             
-            self.address = f'https://twitter.com/search?q=(from%3A{handle})%20until%3A{date}&src=typed_query&f=live'
+            self.address = f'https://twitter.com/search?q=(from%3A{self.handle})%20until%3A{date}&src=typed_query&f=live'
             print(self.address)
 
     def scrap_twitter(self):
@@ -95,17 +114,18 @@ class Twitter:
                 print('Adding: ', raw_date)
                 df.loc[len(df.index)] = [raw_date, raw_text]
 
-            df.to_csv(f'../data/raw/raw_twitter_{handle}.csv', index = False)
+            df.to_csv(self.filepath, index = False)
             body = driver.find_element(By.TAG_NAME, 'body')
             body.send_keys(Keys.PAGE_DOWN)
 
     def run(self):
         self.login_twitter()
-        self.set_df()
+        # self.set_df()
         #NOTE: This won't run
-        self.scrap_twitter()
+        # self.scrap_twitter()
 
 
 if __name__ == '__main__':
-    pass
-
+    print('This will add to or create file in the current directory')
+    scrapper = Scrapper('coalitionavenir')
+    scrapper.run()
