@@ -132,4 +132,3 @@ class Scrapper(Config):
 if __name__ == '__main__':
     print('This program will add to or create file in the current directory')
     scrapper = Scrapper()
-    scrapper.run()
