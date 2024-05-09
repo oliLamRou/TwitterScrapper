@@ -36,7 +36,7 @@ class Scrapper(Config):
         self.address = f'https://twitter.com/{self.handle}'
 
         self.datadir = os.getcwd()
-        self.filepath = f'{self.datadir}/scrap_{self.handle}.csv'
+        self.filepath = f'{self.datadir}/scrap_twitter_{self.handle}.csv'
 
         self.df = pd.DataFrame()
 
@@ -130,5 +130,5 @@ class Scrapper(Config):
         self.scrap_twitter()
 
 if __name__ == '__main__':
-    print('This program will add to or create file in the current directory')
     scrapper = Scrapper()
+    scrapper.run()
