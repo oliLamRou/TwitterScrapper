@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import warnings
 from datetime import datetime, timedelta
 
 from selenium import webdriver
@@ -93,7 +94,7 @@ class Scrapper(Config):
         time.sleep(2)
         while True:
             time.sleep(1)
-            self.driver.find_element(By.CLASS_NAME, 'css-175oi2r')
+            # self.driver.find_element(By.CLASS_NAME, 'css-175oi2r')
             posts = self.driver.find_elements(By.TAG_NAME, 'article')
             if posts == last_posts:
                 if retry > 3:
@@ -112,7 +113,11 @@ class Scrapper(Config):
                 post_id.add(post.id)
                 raw_date = post.find_element(By.TAG_NAME, 'time').get_attribute('datetime')
                 raw_text = []
-                for span in post.find_elements(By.CLASS_NAME, 'css-1qaijid.r-bcqeeo.r-qvutc0.r-poiln3'):
+                spans = post.find_elements(By.TAG_NAME, 'span')
+                if not spans:
+                    warnings.warn("Empty tweet...")
+
+                for span in spans:
                     raw_text.append(span.text)
                     
                 print('Adding: ', raw_date, ' '.join(raw_text)[:100])
