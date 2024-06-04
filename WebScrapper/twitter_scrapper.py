@@ -29,11 +29,14 @@ class Scrapper(Config):
 
         #Handle
         args = sys.argv
-        if len(args) != 2:
-            print("Usage: python scrapper.py handle")
+        if len(args) < 2 and len(args) > 3:
+            print("Usage: python scrapper.py handle update(optionnal)")
             sys.exit(1)
 
         self.handle = args[1]
+        if len(args) > 2 and args[2] == 'update':
+            self.update = True
+
         self.address = f'https://twitter.com/{self.handle}'
 
         self.datadir = os.getcwd()
@@ -46,14 +49,14 @@ class Scrapper(Config):
 
     @property
     def set_driver(self):
-        options = webdriver.ChromeOptions() 
-        options.add_argument("--headless") 
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless")
         return webdriver.Chrome(options=options)
 
     def login_twitter(self):
         print("Login Twitter...")
-        sec = 3
-        self.driver.get('https://twitter.com/i/flow/login')
+        sec = 5
+        self.driver.get('https://x.com/i/flow/login')
         time.sleep(sec)
 
         username_field = self.driver.find_element(By.TAG_NAME, 'input')
@@ -74,15 +77,25 @@ class Scrapper(Config):
 
         if reset or os.path.exists(self.filepath) == False:
             self.df = pd.DataFrame(columns=['raw_date', 'raw_text'])
-            self.address = f'https://twitter.com/{self.handle}'
+            self.address = f'https://x.com/search?q=(from%3A{self.handle})&src=typed_query&f=live'
             print(f'Scrapping from the latest post for Handle: {self.handle} in file: {self.filepath}')
-        else:
-            self.df = pd.read_csv(self.filepath)
-            date = pd.to_datetime(self.df.raw_date, format='%Y-%m-%dT%H:%M:%S.000Z').sort_values(ascending=False).iloc[-1]
+        
+        self.df = pd.read_csv(self.filepath).sort_values('raw_date')
+        date = pd.to_datetime(self.df.raw_date, format='%Y-%m-%dT%H:%M:%S.000Z')
+        if self.update:
+            date = date.iloc[-1]
             date += timedelta(days=2)
             date = date.strftime('%Y-%m-%d')
             
-            self.address = f'https://twitter.com/search?q=(from%3A{self.handle})%20until%3A{date}&src=typed_query&f=live'
+            self.address = f'https://x.com/search?q=(from%3A{self.handle})%20since%3A{date}&src=typed_query&f=live'
+            print(f'Ending {date} for Handle: {self.handle} in file: {self.filepath}')
+
+        else:
+            date = date.iloc[0]
+            date += timedelta(days=2)
+            date = date.strftime('%Y-%m-%d')
+            
+            self.address = f'https://x.com/search?q=(from%3A{self.handle})%20until%3A{date}&src=typed_query&f=live'
             print(f'Starting from {date} for Handle: {self.handle} in file: {self.filepath}')
 
     def scrap_twitter(self):
@@ -123,6 +136,7 @@ class Scrapper(Config):
                 print('Adding: ', raw_date, ' '.join(raw_text)[:100])
                 self.df.loc[len(self.df.index)] = [raw_date, raw_text]
 
+            self.df.sort_values('raw_date', inplace=True)
             self.df.to_csv(self.filepath, index = False)
             body = self.driver.find_element(By.TAG_NAME, 'body')
             body.send_keys(Keys.PAGE_DOWN)
@@ -131,6 +145,7 @@ class Scrapper(Config):
 
     def run(self):
         self.login_twitter()
+        time.sleep(1)
         self.set_df()
         self.scrap_twitter()
 
